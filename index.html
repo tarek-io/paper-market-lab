@@ -3,40 +3,133 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Paper Capital</title>
-    <link rel="stylesheet" href="./styles.css?v=capital-1" />
+    <title>Paper Capital Live</title>
+    <link rel="stylesheet" href="./styles.css?v=live-1" />
   </head>
   <body>
-    <main class="viewer">
-      <header>
-        <span>Deterministic paper model</span>
-        <h1>Paper Capital</h1>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">P</div>
+          <div>
+            <h1>Paper Capital</h1>
+            <p>Live deterministic market monitor</p>
+          </div>
+        </div>
+        <div id="liveBadge" class="live-badge offline">
+          <span class="pulse"></span>
+          <span id="liveLabel">CONNECTING</span>
+          <small id="liveAge">—</small>
+        </div>
       </header>
 
-      <form id="capitalForm" class="capital-form">
-        <label for="capitalInput">Fake money to put in now</label>
-        <div class="money-input">
-          <span>$</span>
-          <input id="capitalInput" name="capital" type="number" min="0" step="1" inputmode="decimal" value="100" />
-        </div>
-      </form>
+      <section class="hero-grid">
+        <article class="capital-card glass-card">
+          <span class="card-label">FAKE CAPITAL</span>
+          <label class="capital-input" for="capitalInput">
+            <span>$</span>
+            <input id="capitalInput" type="number" min="0" step="1" inputmode="decimal" value="100" aria-label="Fake capital available now" />
+          </label>
+          <div class="capital-result">
+            <div>
+              <span>EXPECTED END</span>
+              <strong id="endingCapital">—</strong>
+            </div>
+            <div id="profitBadge" class="profit-badge neutral">—</div>
+          </div>
+        </article>
 
-      <section class="result" aria-live="polite">
-        <p id="action" class="action">—</p>
-        <div class="arrow-row">
-          <strong id="startingCapital">—</strong>
-          <span>→</span>
-          <strong id="endingCapital">—</strong>
-        </div>
-        <p id="profit" class="profit">—</p>
+        <article class="decision-card glass-card">
+          <div class="decision-head">
+            <span class="card-label">ALGORITHM</span>
+            <span id="decisionChip" class="decision-chip wait">WAIT</span>
+          </div>
+          <div id="unitCount" class="big-number">0</div>
+          <div class="big-caption">units selected</div>
+          <div class="mini-row">
+            <span>deployed <strong id="deployedCapital">$0.00</strong></span>
+            <span>reserve <strong id="reserveCapital">$100.00</strong></span>
+          </div>
+        </article>
       </section>
 
-      <section class="explain">
-        <p id="explanation">—</p>
+      <section class="route-card glass-card">
+        <div class="route-title">
+          <span class="card-label">LIVE ROUTE</span>
+          <span id="inventoryBadge" class="inventory-badge">0 AVAILABLE</span>
+        </div>
+        <div class="route-flow">
+          <div class="route-node supplier-node">
+            <div class="logo-circle clore">C</div>
+            <div>
+              <span class="node-role">INPUT · COST</span>
+              <strong>Clore</strong>
+              <small id="supplierPrice">—</small>
+            </div>
+          </div>
+
+          <div class="flow-line">
+            <span></span>
+            <div class="gpu-core">
+              <small>MATCH</small>
+              <strong id="gpuName">—</strong>
+              <em id="serverName">—</em>
+            </div>
+            <span></span>
+          </div>
+
+          <div class="route-node buyer-node">
+            <div class="logo-circle nosana">N</div>
+            <div>
+              <span class="node-role">OUTPUT · REVENUE</span>
+              <strong>Nosana</strong>
+              <small id="buyerPrice">—</small>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <footer>Fake money · synthetic market · deterministic algorithm</footer>
+      <section class="metric-grid">
+        <article class="metric-card glass-card">
+          <div class="metric-top"><span>Demand</span><span class="metric-icon">↗</span></div>
+          <strong id="demandValue">—</strong>
+          <small id="demandSub">—</small>
+          <div class="meter"><span id="demandMeter"></span></div>
+        </article>
+        <article class="metric-card glass-card">
+          <div class="metric-top"><span>Expected use</span><span class="metric-icon">◐</span></div>
+          <strong id="utilValue">—</strong>
+          <small id="utilSub">market fill</small>
+          <div class="meter"><span id="utilMeter"></span></div>
+        </article>
+        <article class="metric-card glass-card">
+          <div class="metric-top"><span>Unit edge</span><span class="metric-icon">＋</span></div>
+          <strong id="edgeValue">—</strong>
+          <small id="edgeSub">next 6h</small>
+          <div class="meter"><span id="edgeMeter"></span></div>
+        </article>
+      </section>
+
+      <section class="polling-card glass-card">
+        <div class="poll-left">
+          <span id="vmStatusDot" class="status-dot"></span>
+          <div>
+            <strong>VM polling engine</strong>
+            <small id="pollDetail">waiting for heartbeat</small>
+          </div>
+        </div>
+        <div class="source-statuses">
+          <div><span class="source-dot"></span><strong>Clore</strong><small>supplier</small></div>
+          <div><span class="source-dot"></span><strong>Nosana</strong><small>buyer</small></div>
+          <div><span class="source-dot"></span><strong>Solana</strong><small>queue check</small></div>
+        </div>
+      </section>
+
+      <footer>
+        <span>Fake money only</span>
+        <span id="lastSnapshot">No live snapshot yet</span>
+      </footer>
     </main>
-    <script type="module" src="./app.js?v=capital-1"></script>
+    <script type="module" src="./app.js?v=live-1"></script>
   </body>
 </html>
