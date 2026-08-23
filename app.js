@@ -1,4 +1,4 @@
-import { generateScenario, simulate } from "./model.mjs";
+import { generateScenario, simulate } from "./model.mjs?v=minimal-1";
 
 const config = {
   seed: 421337,
