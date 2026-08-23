@@ -105,17 +105,14 @@ function renderHeartbeat() {
     return;
   }
 
-  const ages = sourceAgesSeconds();
-  const detail = `Nosana ${ageLabel(ages.nosana)} · Clore ${ageLabel(ages.clore)} · Solana ${ageLabel(ages.solana)}`;
-  document.getElementById("pollDetail").textContent = detail;
-
   if (liveData) {
     badge.className = "live-badge live";
     document.getElementById("liveLabel").textContent = "LIVE";
+    document.getElementById("pollDetail").textContent = "market feed active";
   } else {
-    const worst = Math.max(ages.nosana, ages.clore, ages.solana);
     badge.className = "live-badge degraded";
-    document.getElementById("liveLabel").textContent = `DELAYED ${Math.max(1, Math.ceil(worst))}s`;
+    document.getElementById("liveLabel").textContent = "DELAYED";
+    document.getElementById("pollDetail").textContent = "market feed outside freshness window";
   }
   document.getElementById("vmStatusDot").classList.toggle("live", liveData);
 }
@@ -149,24 +146,6 @@ function isSourceFresh(source) {
   const maxAgeSeconds = Number(freshness[maxAgeKey] || 15);
   if (!observedAt) return false;
   return Date.now() - new Date(observedAt).getTime() <= maxAgeSeconds * 1000;
-}
-
-function sourceAgesSeconds() {
-  return {
-    nosana: sourceAgeSeconds("nosana"),
-    clore: sourceAgeSeconds("clore"),
-    solana: sourceAgeSeconds("solana"),
-  };
-}
-
-function sourceAgeSeconds(source) {
-  const observedAt = snapshot?.freshness?.[`${source}ObservedAt`] || snapshot?.observedAt;
-  if (!observedAt) return Infinity;
-  return Math.max(0, (Date.now() - new Date(observedAt).getTime()) / 1000);
-}
-
-function ageLabel(seconds) {
-  return Number.isFinite(seconds) ? `${Math.max(0, Math.floor(seconds))}s` : "unknown";
 }
 
 function marketDataAgeMs() {
