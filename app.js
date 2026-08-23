@@ -100,11 +100,12 @@ function renderHeartbeat() {
   const fresh = age < STALE_AFTER_MS;
   const degraded = snapshot.heartbeat?.status === "degraded";
   badge.className = `live-badge ${fresh ? degraded ? "degraded" : "live" : "offline"}`;
-  document.getElementById("liveLabel").textContent = fresh ? degraded ? "DEGRADED" : "LIVE" : "STALE";
-  document.getElementById("liveAge").textContent = `${ageLabel(age)} ago`;
+  document.getElementById("liveLabel").textContent = fresh ? degraded ? "DEGRADED" : "LIVE" : "OFFLINE";
   document.getElementById("pollDetail").textContent = fresh
-    ? `VM ${snapshot.heartbeat?.pollIntervalSeconds || 60}s · dashboard 75s · sequence ${snapshot.heartbeat?.sequence || "—"}`
-    : "heartbeat is stale";
+    ? degraded
+      ? "market feed degraded"
+      : "market feed active"
+    : "market feed offline";
   document.getElementById("vmStatusDot").classList.toggle("live", fresh && !degraded);
 }
 
@@ -112,7 +113,6 @@ function renderOffline() {
   const badge = document.getElementById("liveBadge");
   badge.className = "live-badge offline";
   document.getElementById("liveLabel").textContent = "OFFLINE";
-  document.getElementById("liveAge").textContent = "no heartbeat";
   document.getElementById("pollDetail").textContent = "cannot reach public VM heartbeat";
 }
 
@@ -124,13 +124,6 @@ function heartbeatAgeMs() {
 
 function isHeartbeatFresh() {
   return heartbeatAgeMs() < STALE_AFTER_MS && snapshot?.heartbeat?.status === "live";
-}
-
-function ageLabel(milliseconds) {
-  if (!Number.isFinite(milliseconds)) return "∞";
-  const seconds = Math.floor(milliseconds / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.floor(seconds / 60)}m`;
 }
 
 function money(value) { return `$${Number(value || 0).toFixed(2)}`; }

@@ -33,7 +33,6 @@ h1 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
 .brand p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
 .glass-card { background: linear-gradient(160deg, rgba(19, 26, 36, .97), rgba(13, 18, 26, .97)); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 10px 38px rgba(0,0,0,.15); }
 .live-badge { display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .06em; }
-.live-badge small { color: var(--muted); font-weight: 600; letter-spacing: 0; }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .live-badge.live { color: var(--green); border-color: rgba(37,213,138,.28); background: var(--green-soft); }
 .live-badge.live .pulse { background: var(--green); box-shadow: 0 0 0 5px rgba(37,213,138,.08); }
