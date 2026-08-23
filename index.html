@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Paper Capital Live</title>
-    <link rel="stylesheet" href="./styles.css?v=live-3" />
+    <link rel="stylesheet" href="./styles.css?v=live-4" />
   </head>
   <body>
     <main class="app-shell">
@@ -39,12 +39,12 @@
           <small id="capitalHint" class="capital-hint">Waiting for live capacity</small>
           <div class="capital-result">
             <div>
-              <span id="endingCapitalLabel">CAPITAL AFTER 6H</span>
-              <strong id="endingCapital">—</strong>
+              <span>MODELED NET RATE</span>
+              <strong id="netRate">—</strong>
             </div>
             <div class="profit-result">
-              <span id="profitLabel">EXPECTED 6H PROFIT</span>
-              <div id="profitBadge" class="profit-badge neutral">—</div>
+              <span>BREAK-EVEN IF RATE HOLDS</span>
+              <div id="breakEvenBadge" class="profit-badge neutral">—</div>
             </div>
           </div>
         </article>
@@ -57,7 +57,7 @@
           <div id="unitCount" class="big-number">0</div>
           <div class="big-caption">units selected</div>
           <div class="mini-row">
-            <span>deployed <strong id="deployedCapital">$0.00</strong></span>
+            <span>1h + fees <strong id="deployedCapital">$0.00</strong></span>
             <span>reserve <strong id="reserveCapital">$100.00</strong></span>
           </div>
         </article>
@@ -115,7 +115,7 @@
         <article class="metric-card glass-card">
           <div class="metric-top"><span>Unit edge</span><span class="metric-icon">＋</span></div>
           <strong id="edgeValue">—</strong>
-          <small id="edgeSub">next 6h</small>
+          <small id="edgeSub">current modeled edge</small>
           <div class="meter"><span id="edgeMeter"></span></div>
         </article>
       </section>
@@ -136,10 +136,10 @@
       </section>
 
       <footer>
-        <span>Fake money only</span>
+        <span>Fake money · demand can change before break-even</span>
         <span id="lastSnapshot">No live snapshot yet</span>
       </footer>
     </main>
-    <script type="module" src="./app.js?v=live-4"></script>
+    <script type="module" src="./app.js?v=live-5"></script>
   </body>
 </html>

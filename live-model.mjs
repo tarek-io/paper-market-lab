@@ -1,13 +1,13 @@
 const DEFAULT_LIVE_CONFIG = Object.freeze({
-  commitmentHours: 6,
+  workingCapitalHours: 1,
   activationDelayMinutes: 30,
   minimumReliability: 0.9,
-  minimumUnitProfitUsd: 0.05,
+  minimumNetRateUsdPerHour: 0,
 });
 
 export function buildLiveSnapshot(report, inputConfig = {}) {
   const config = { ...DEFAULT_LIVE_CONFIG, ...inputConfig };
-  const earningHours = Math.max(0, config.commitmentHours - config.activationDelayMinutes / 60);
+  const activationDelayHours = Math.max(0, config.activationDelayMinutes / 60);
   const candidates = (report.candidates || [])
     .filter((candidate) => candidate.demandPass && candidate.economicPass)
     .filter((candidate) => Number(candidate.seller?.reliability || 0) >= config.minimumReliability)
@@ -16,10 +16,16 @@ export function buildLiveSnapshot(report, inputConfig = {}) {
       const rewardUsdPerPaidHour = Number(candidate.market?.hostRewardUsdPerHour || 0);
       const supplyCostUsdPerHour = Number(candidate.seller?.effectiveUsdPerHour || 0);
       const orderFeeUsd = Number(candidate.seller?.orderFeeUsd || 0);
-      const commitmentCostUsd = supplyCostUsdPerHour * config.commitmentHours + orderFeeUsd;
-      const expectedRevenueUsd = rewardUsdPerPaidHour * expectedUtilization * earningHours;
-      const expectedProfitUsd = expectedRevenueUsd - commitmentCostUsd;
-      const expectedRoi = commitmentCostUsd > 0 ? expectedProfitUsd / commitmentCostUsd : -Infinity;
+      const grossRevenueRateUsdPerHour = rewardUsdPerPaidHour * expectedUtilization;
+      const netRateUsdPerHour = grossRevenueRateUsdPerHour - supplyCostUsdPerHour;
+      const workingCapitalCostUsd =
+        supplyCostUsdPerHour * config.workingCapitalHours + orderFeeUsd;
+      const startupDragUsd =
+        grossRevenueRateUsdPerHour * activationDelayHours + orderFeeUsd;
+      const breakEvenHours =
+        netRateUsdPerHour > 0 ? startupDragUsd / netRateUsdPerHour : null;
+      const capitalEfficiencyPerHour =
+        workingCapitalCostUsd > 0 ? netRateUsdPerHour / workingCapitalCostUsd : -Infinity;
 
       return {
         id: `${candidate.market.slug}:${candidate.seller.serverId}:${candidate.seller.mode}`,
@@ -39,19 +45,24 @@ export function buildLiveSnapshot(report, inputConfig = {}) {
         jobsLastHour: Number(candidate.market.jobStartsLastHour || 0),
         expectedUtilization: round(expectedUtilization, 4),
         rewardUsdPerPaidHour: round(rewardUsdPerPaidHour, 6),
+        grossRevenueRateUsdPerHour: round(grossRevenueRateUsdPerHour, 6),
         supplyCostUsdPerHour: round(supplyCostUsdPerHour, 6),
+        netRateUsdPerHour: round(netRateUsdPerHour, 6),
         orderFeeUsd: round(orderFeeUsd, 6),
-        commitmentHours: config.commitmentHours,
+        workingCapitalHours: config.workingCapitalHours,
+        workingCapitalCostUsd: round(workingCapitalCostUsd, 6),
         activationDelayMinutes: config.activationDelayMinutes,
-        earningHours,
-        commitmentCostUsd: round(commitmentCostUsd, 6),
-        expectedRevenueUsd: round(expectedRevenueUsd, 6),
-        expectedProfitUsd: round(expectedProfitUsd, 6),
-        expectedRoi: round(expectedRoi, 6),
+        startupDragUsd: round(startupDragUsd, 6),
+        breakEvenHours: breakEvenHours == null ? null : round(breakEvenHours, 4),
+        capitalEfficiencyPerHour: round(capitalEfficiencyPerHour, 6),
         breakEvenUtilization: round(Number(candidate.breakEvenUtilization || 0), 4),
       };
     })
-    .filter((unit) => unit.commitmentCostUsd > 0 && unit.expectedProfitUsd >= config.minimumUnitProfitUsd);
+    .filter(
+      (unit) =>
+        unit.workingCapitalCostUsd > 0 &&
+        unit.netRateUsdPerHour > config.minimumNetRateUsdPerHour,
+    );
 
   const bestByServer = new Map();
   for (const unit of candidates) {
@@ -64,14 +75,14 @@ export function buildLiveSnapshot(report, inputConfig = {}) {
   const primary = inventory[0] || null;
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     observedAt: report.observedAt,
     config,
     engine: {
       type: "deterministic",
-      version: "live-v1",
-      rule: "rank unique available units by expected ROI after activation delay and fees",
+      version: "live-v2",
+      rule: "rank unique available units by current net rate per dollar of one-hour working capital",
     },
     sources: {
       buyer: {
@@ -109,7 +120,7 @@ export function buildLiveSnapshot(report, inputConfig = {}) {
 
 export function maximumUsefulCapital(snapshot) {
   const total = (snapshot?.inventory || []).reduce(
-    (sum, unit) => sum + Number(unit.commitmentCostUsd || 0),
+    (sum, unit) => sum + Number(unit.workingCapitalCostUsd || 0),
     0,
   );
   return Math.ceil(total * 100) / 100;
@@ -121,31 +132,56 @@ export function allocateLiveCapital(snapshot, capitalUsd) {
   const selected = [];
 
   for (const unit of snapshot.inventory || []) {
-    if (unit.commitmentCostUsd <= remaining + 1e-9) {
+    if (unit.workingCapitalCostUsd <= remaining + 1e-9) {
       selected.push(unit);
-      remaining -= unit.commitmentCostUsd;
+      remaining -= unit.workingCapitalCostUsd;
     }
   }
 
-  const deployedCapitalUsd = selected.reduce((sum, unit) => sum + unit.commitmentCostUsd, 0);
-  const expectedProfitUsd = selected.reduce((sum, unit) => sum + unit.expectedProfitUsd, 0);
+  const deployedCapitalUsd = selected.reduce(
+    (sum, unit) => sum + unit.workingCapitalCostUsd,
+    0,
+  );
+  const expectedNetRateUsdPerHour = selected.reduce(
+    (sum, unit) => sum + unit.netRateUsdPerHour,
+    0,
+  );
+  const grossRevenueRateUsdPerHour = selected.reduce(
+    (sum, unit) => sum + unit.grossRevenueRateUsdPerHour,
+    0,
+  );
+  const supplyCostUsdPerHour = selected.reduce(
+    (sum, unit) => sum + unit.supplyCostUsdPerHour,
+    0,
+  );
+  const startupDragUsd = selected.reduce((sum, unit) => sum + unit.startupDragUsd, 0);
+  const breakEvenHours =
+    expectedNetRateUsdPerHour > 0 ? startupDragUsd / expectedNetRateUsdPerHour : null;
 
   return {
     action: selected.length ? "DEPLOY" : "WAIT",
     startingCapitalUsd: round(capital, 2),
     units: selected.length,
+    workingCapitalHours: Number(snapshot?.config?.workingCapitalHours || 1),
     deployedCapitalUsd: round(deployedCapitalUsd, 2),
     reserveCapitalUsd: round(remaining, 2),
-    expectedProfitUsd: round(expectedProfitUsd, 2),
-    expectedEndingCapitalUsd: round(capital + expectedProfitUsd, 2),
+    grossRevenueRateUsdPerHour: round(grossRevenueRateUsdPerHour, 2),
+    supplyCostUsdPerHour: round(supplyCostUsdPerHour, 2),
+    expectedNetRateUsdPerHour: round(expectedNetRateUsdPerHour, 2),
+    startupDragUsd: round(startupDragUsd, 2),
+    breakEvenHours: breakEvenHours == null ? null : round(breakEvenHours, 2),
     selected,
   };
 }
 
 function compareUnits(left, right) {
-  if (left.expectedRoi !== right.expectedRoi) return right.expectedRoi - left.expectedRoi;
-  if (left.expectedProfitUsd !== right.expectedProfitUsd) return right.expectedProfitUsd - left.expectedProfitUsd;
-  return left.commitmentCostUsd - right.commitmentCostUsd;
+  if (left.capitalEfficiencyPerHour !== right.capitalEfficiencyPerHour) {
+    return right.capitalEfficiencyPerHour - left.capitalEfficiencyPerHour;
+  }
+  if (left.netRateUsdPerHour !== right.netRateUsdPerHour) {
+    return right.netRateUsdPerHour - left.netRateUsdPerHour;
+  }
+  return left.workingCapitalCostUsd - right.workingCapitalCostUsd;
 }
 
 function clamp(value, min, max) {

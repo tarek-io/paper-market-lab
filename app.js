@@ -1,10 +1,11 @@
-import { allocateLiveCapital, maximumUsefulCapital } from "./live-model.mjs?v=live-4";
+import { allocateLiveCapital, maximumUsefulCapital } from "./live-model.mjs?v=live-5";
 
 const LIVE_URL = "https://tarek-codex-cloud.duckdns.org/paper-live/api/live";
 const PUBLIC_POLL_MS = 1_000;
 const ENGINE_STALE_THRESHOLD_MS = 90_000;
 
 let snapshot = null;
+let snapshotReceivedAtMs = 0;
 let capital = 100;
 const input = document.getElementById("capitalInput");
 const maxCapitalToggle = document.getElementById("maxCapitalToggle");
@@ -29,6 +30,7 @@ async function refresh() {
     const response = await fetch(`${LIVE_URL}?t=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`heartbeat ${response.status}`);
     snapshot = await response.json();
+    snapshotReceivedAtMs = Date.now();
     renderSnapshot();
   } catch {
     renderOffline();
@@ -62,12 +64,16 @@ function renderSnapshot() {
   document.getElementById("utilSub").textContent = primary ? `break-even ${Math.round(primary.breakEvenUtilization * 100)}%` : "market fill";
   document.getElementById("utilMeter").style.width = `${Math.round(util * 100)}%`;
 
-  const edge = Number(primary?.expectedProfitUsd || 0);
+  const edge = Number(primary?.netRateUsdPerHour || 0);
   const edgeEl = document.getElementById("edgeValue");
-  edgeEl.textContent = primary ? signedMoney(edge) : "—";
+  edgeEl.textContent = primary ? `${signedMoney(edge)}/h` : "—";
   edgeEl.className = edge > 0 ? "positive-text" : edge < 0 ? "negative-text" : "";
-  document.getElementById("edgeSub").textContent = primary ? `${Math.round(primary.expectedRoi * 100)}% expected ROI` : "next 6h";
-  document.getElementById("edgeMeter").style.width = primary ? `${Math.max(0, Math.min(100, primary.expectedRoi * 160))}%` : "0%";
+  document.getElementById("edgeSub").textContent = primary
+    ? `break-even ${formatDuration(primary.breakEvenHours)}`
+    : "current modeled edge";
+  document.getElementById("edgeMeter").style.width = primary
+    ? `${Math.max(0, Math.min(100, Number(primary.capitalEfficiencyPerHour || 0) * 100))}%`
+    : "0%";
 
   document.getElementById("cloreSourceDot").classList.toggle("live", isSourceFresh("clore"));
   document.getElementById("nosanaSourceDot").classList.toggle("live", isSourceFresh("nosana"));
@@ -82,25 +88,23 @@ function renderAllocation() {
   if (!snapshot) return;
   if (maxCapitalToggle.checked) syncCapitalToMaximum();
   const allocation = allocateLiveCapital(snapshot, capital);
-  const commitmentHours = Number(snapshot?.config?.commitmentHours || 6);
   const maxCapital = maximumUsefulCapital(snapshot);
-  const maxAllocation = allocateLiveCapital(snapshot, maxCapital);
 
-  document.getElementById("endingCapitalLabel").textContent = `CAPITAL AFTER ${formatHours(commitmentHours)}`;
-  document.getElementById("profitLabel").textContent = `EXPECTED ${formatHours(commitmentHours)} PROFIT`;
-  document.getElementById("endingCapital").textContent = money(allocation.expectedEndingCapitalUsd);
+  document.getElementById("netRate").textContent = allocation.units
+    ? `${signedMoney(allocation.expectedNetRateUsdPerHour)}/h`
+    : "$0.00/h";
+  document.getElementById("breakEvenBadge").textContent = allocation.units
+    ? formatDuration(allocation.breakEvenHours)
+    : "—";
+  document.getElementById("breakEvenBadge").className = `profit-badge ${allocation.units ? "positive" : "neutral"}`;
   document.getElementById("capitalHint").textContent = snapshot.inventory?.length
-    ? `Max useful capital ${money(maxCapital)} · ${snapshot.inventory.length} qualifying units · max profit ${signedMoney(maxAllocation.expectedProfitUsd)}`
+    ? `MAX ${money(maxCapital)} · ${snapshot.inventory.length} qualifying units · 1h supplier costs + order fees`
     : "No currently qualifying units";
   maxCapitalToggle.disabled = !snapshot.inventory?.length;
   input.readOnly = maxCapitalToggle.checked;
   document.getElementById("unitCount").textContent = String(allocation.units);
   document.getElementById("deployedCapital").textContent = money(allocation.deployedCapitalUsd);
   document.getElementById("reserveCapital").textContent = money(allocation.reserveCapitalUsd);
-
-  const profit = document.getElementById("profitBadge");
-  profit.textContent = allocation.expectedProfitUsd === 0 ? "$0.00" : signedMoney(allocation.expectedProfitUsd);
-  profit.className = `profit-badge ${allocation.expectedProfitUsd > 0 ? "positive" : allocation.expectedProfitUsd < 0 ? "negative" : "neutral"}`;
 
   const decision = document.getElementById("decisionChip");
   decision.textContent = allocation.action;
@@ -145,8 +149,7 @@ function renderOffline() {
 
 function engineHeartbeatAgeMs() {
   const time = snapshot?.heartbeat?.cycleCompletedAt || snapshot?.generatedAt;
-  if (!time) return Infinity;
-  return Math.max(0, Date.now() - new Date(time).getTime());
+  return relativeAgeMs(time);
 }
 
 function isHeartbeatFresh() {
@@ -164,13 +167,16 @@ function isSourceFresh(source) {
   const observedAt = freshness[observedKey] || snapshot?.observedAt;
   const maxAgeSeconds = Number(freshness[maxAgeKey] || 15);
   if (!observedAt) return false;
-  return Date.now() - new Date(observedAt).getTime() <= maxAgeSeconds * 1000;
+  return relativeAgeMs(observedAt) <= maxAgeSeconds * 1000;
 }
 
-function marketDataAgeMs() {
-  const time = snapshot?.observedAt;
-  if (!time) return Infinity;
-  return Math.max(0, Date.now() - new Date(time).getTime());
+function relativeAgeMs(observedAt) {
+  if (!observedAt || !snapshotReceivedAtMs) return Infinity;
+  const servedAt = snapshot?.transport?.servedAt || snapshot?.heartbeat?.cycleCompletedAt || snapshot?.generatedAt;
+  if (!servedAt) return Infinity;
+  const ageWhenServed = Math.max(0, new Date(servedAt).getTime() - new Date(observedAt).getTime());
+  const elapsedSinceReceipt = Math.max(0, Date.now() - snapshotReceivedAtMs);
+  return ageWhenServed + elapsedSinceReceipt;
 }
 
 function syncCapitalToMaximum() {
@@ -179,8 +185,11 @@ function syncCapitalToMaximum() {
   input.value = capital.toFixed(2);
 }
 
-function formatHours(value) {
-  return Number.isInteger(value) ? `${value}H` : `${value.toFixed(1)}H`;
+function formatDuration(hours) {
+  const value = Number(hours);
+  if (!Number.isFinite(value) || value < 0) return "unknown";
+  if (value < 1) return `${Math.max(1, Math.round(value * 60))}m`;
+  return `${value.toFixed(value < 10 ? 1 : 0)}h`;
 }
 
 function money(value) { return `$${Number(value || 0).toFixed(2)}`; }
