@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Paper Capital Live</title>
-    <link rel="stylesheet" href="./styles.css?v=live-2" />
+    <link rel="stylesheet" href="./styles.css?v=live-3" />
   </head>
   <body>
     <main class="app-shell">
@@ -24,17 +24,28 @@
 
       <section class="hero-grid">
         <article class="capital-card glass-card">
-          <span class="card-label">FAKE CAPITAL</span>
+          <div class="capital-head">
+            <span class="card-label">FAKE CAPITAL</span>
+            <label class="max-capital-toggle" for="maxCapitalToggle">
+              <span>MAX</span>
+              <input id="maxCapitalToggle" type="checkbox" aria-label="Automatically track maximum useful fake capital" />
+              <i aria-hidden="true"></i>
+            </label>
+          </div>
           <label class="capital-input" for="capitalInput">
             <span>$</span>
-            <input id="capitalInput" type="number" min="0" step="1" inputmode="decimal" value="100" aria-label="Fake capital available now" />
+            <input id="capitalInput" type="number" min="0" step="0.01" inputmode="decimal" value="100" aria-label="Fake capital available now" />
           </label>
+          <small id="capitalHint" class="capital-hint">Waiting for live capacity</small>
           <div class="capital-result">
             <div>
-              <span>EXPECTED END</span>
+              <span id="endingCapitalLabel">CAPITAL AFTER 6H</span>
               <strong id="endingCapital">—</strong>
             </div>
-            <div id="profitBadge" class="profit-badge neutral">—</div>
+            <div class="profit-result">
+              <span id="profitLabel">EXPECTED 6H PROFIT</span>
+              <div id="profitBadge" class="profit-badge neutral">—</div>
+            </div>
           </div>
         </article>
 
@@ -129,6 +140,6 @@
         <span id="lastSnapshot">No live snapshot yet</span>
       </footer>
     </main>
-    <script type="module" src="./app.js?v=live-3"></script>
+    <script type="module" src="./app.js?v=live-4"></script>
   </body>
 </html>

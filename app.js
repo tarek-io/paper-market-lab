@@ -1,4 +1,4 @@
-import { allocateLiveCapital } from "./live-model.mjs?v=live-3";
+import { allocateLiveCapital, maximumUsefulCapital } from "./live-model.mjs?v=live-4";
 
 const LIVE_URL = "https://tarek-codex-cloud.duckdns.org/paper-live/api/live";
 const PUBLIC_POLL_MS = 1_000;
@@ -7,9 +7,16 @@ const ENGINE_STALE_THRESHOLD_MS = 90_000;
 let snapshot = null;
 let capital = 100;
 const input = document.getElementById("capitalInput");
+const maxCapitalToggle = document.getElementById("maxCapitalToggle");
 
 input.addEventListener("input", () => {
   capital = Math.max(0, Number(input.value || 0));
+  renderAllocation();
+});
+
+maxCapitalToggle.addEventListener("change", () => {
+  input.readOnly = maxCapitalToggle.checked;
+  if (maxCapitalToggle.checked) syncCapitalToMaximum();
   renderAllocation();
 });
 
@@ -73,8 +80,20 @@ function renderSnapshot() {
 
 function renderAllocation() {
   if (!snapshot) return;
+  if (maxCapitalToggle.checked) syncCapitalToMaximum();
   const allocation = allocateLiveCapital(snapshot, capital);
+  const commitmentHours = Number(snapshot?.config?.commitmentHours || 6);
+  const maxCapital = maximumUsefulCapital(snapshot);
+  const maxAllocation = allocateLiveCapital(snapshot, maxCapital);
+
+  document.getElementById("endingCapitalLabel").textContent = `CAPITAL AFTER ${formatHours(commitmentHours)}`;
+  document.getElementById("profitLabel").textContent = `EXPECTED ${formatHours(commitmentHours)} PROFIT`;
   document.getElementById("endingCapital").textContent = money(allocation.expectedEndingCapitalUsd);
+  document.getElementById("capitalHint").textContent = snapshot.inventory?.length
+    ? `Max useful capital ${money(maxCapital)} · ${snapshot.inventory.length} qualifying units · max profit ${signedMoney(maxAllocation.expectedProfitUsd)}`
+    : "No currently qualifying units";
+  maxCapitalToggle.disabled = !snapshot.inventory?.length;
+  input.readOnly = maxCapitalToggle.checked;
   document.getElementById("unitCount").textContent = String(allocation.units);
   document.getElementById("deployedCapital").textContent = money(allocation.deployedCapitalUsd);
   document.getElementById("reserveCapital").textContent = money(allocation.reserveCapitalUsd);
@@ -152,6 +171,16 @@ function marketDataAgeMs() {
   const time = snapshot?.observedAt;
   if (!time) return Infinity;
   return Math.max(0, Date.now() - new Date(time).getTime());
+}
+
+function syncCapitalToMaximum() {
+  if (!snapshot) return;
+  capital = maximumUsefulCapital(snapshot);
+  input.value = capital.toFixed(2);
+}
+
+function formatHours(value) {
+  return Number.isInteger(value) ? `${value}H` : `${value.toFixed(1)}H`;
 }
 
 function money(value) { return `$${Number(value || 0).toFixed(2)}`; }

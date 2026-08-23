@@ -44,13 +44,25 @@ h1 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
 .hero-grid { display: grid; grid-template-columns: 1.4fr .8fr; gap: 12px; margin-bottom: 12px; }
 .capital-card, .decision-card { padding: 20px; min-width: 0; }
 .card-label, .node-role { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.capital-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.max-capital-toggle { display: flex; align-items: center; gap: 8px; color: var(--blue); font-size: 10px; font-weight: 850; letter-spacing: .08em; cursor: pointer; user-select: none; }
+.max-capital-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.max-capital-toggle i { position: relative; width: 30px; height: 18px; border: 1px solid #334156; border-radius: 999px; background: rgba(127,139,157,.08); transition: background .18s ease, border-color .18s ease; }
+.max-capital-toggle i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: transform .18s ease, background .18s ease; }
+.max-capital-toggle input:checked + i { background: rgba(37,213,138,.12); border-color: rgba(37,213,138,.32); }
+.max-capital-toggle input:checked + i::after { transform: translateX(12px); background: var(--green); }
+.max-capital-toggle:has(input:disabled) { opacity: .4; cursor: default; }
 .capital-input { display: flex; align-items: baseline; gap: 5px; margin: 13px 0 20px; }
 .capital-input span, .capital-input input { font-size: clamp(44px, 7vw, 66px); line-height: 1; letter-spacing: -.055em; font-weight: 760; }
 .capital-input input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: inherit; appearance: textfield; padding: 0; }
+.capital-input input[readonly] { cursor: default; }
 .capital-input input::-webkit-inner-spin-button, .capital-input input::-webkit-outer-spin-button { appearance: none; }
+.capital-hint { display: block; min-height: 16px; margin: -10px 0 16px; color: var(--muted); font-size: 10px; }
 .capital-result { display: flex; justify-content: space-between; align-items: end; gap: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .capital-result span { color: var(--muted); display: block; font-size: 10px; font-weight: 800; letter-spacing: .1em; margin-bottom: 4px; }
 .capital-result strong { font-size: 24px; letter-spacing: -.035em; }
+.profit-result { text-align: right; }
+.profit-result > span { text-align: right; }
 .profit-badge { padding: 9px 11px; border-radius: 9px; font-size: 15px; font-weight: 800; }
 .profit-badge.positive { color: var(--green); background: var(--green-soft); }
 .profit-badge.negative { color: var(--red); background: var(--red-soft); }

@@ -107,6 +107,14 @@ export function buildLiveSnapshot(report, inputConfig = {}) {
   };
 }
 
+export function maximumUsefulCapital(snapshot) {
+  const total = (snapshot?.inventory || []).reduce(
+    (sum, unit) => sum + Number(unit.commitmentCostUsd || 0),
+    0,
+  );
+  return Math.ceil(total * 100) / 100;
+}
+
 export function allocateLiveCapital(snapshot, capitalUsd) {
   const capital = clamp(Number(capitalUsd) || 0, 0, 1_000_000_000);
   let remaining = capital;
