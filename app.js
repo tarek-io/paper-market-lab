@@ -1,8 +1,7 @@
-import { allocateLiveCapital } from "./live-model.mjs?v=live-2";
+import { allocateLiveCapital } from "./live-model.mjs?v=live-3";
 
 const LIVE_URL = "https://tarek-codex-cloud.duckdns.org/paper-live/api/live";
 const PUBLIC_POLL_MS = 1_000;
-const LIVE_DATA_THRESHOLD_MS = 2_500;
 const ENGINE_STALE_THRESHOLD_MS = 90_000;
 
 let snapshot = null;
@@ -63,7 +62,9 @@ function renderSnapshot() {
   document.getElementById("edgeSub").textContent = primary ? `${Math.round(primary.expectedRoi * 100)}% expected ROI` : "next 6h";
   document.getElementById("edgeMeter").style.width = primary ? `${Math.max(0, Math.min(100, primary.expectedRoi * 160))}%` : "0%";
 
-  for (const dot of document.querySelectorAll(".source-dot")) dot.classList.toggle("live", live);
+  document.getElementById("cloreSourceDot").classList.toggle("live", isSourceFresh("clore"));
+  document.getElementById("nosanaSourceDot").classList.toggle("live", isSourceFresh("nosana"));
+  document.getElementById("solanaSourceDot").classList.toggle("live", isSourceFresh("solana"));
   document.getElementById("vmStatusDot").classList.toggle("live", live);
   document.getElementById("lastSnapshot").textContent = snapshot?.observedAt ? `market ${formatClock(snapshot.observedAt)}` : "no market timestamp";
   renderHeartbeat();
@@ -91,11 +92,10 @@ function renderHeartbeat() {
   if (!snapshot) return;
   const badge = document.getElementById("liveBadge");
   const engineAge = engineHeartbeatAgeMs();
-  const marketAge = marketDataAgeMs();
   const freshEngine = engineAge < ENGINE_STALE_THRESHOLD_MS;
-  const liveData = marketAge <= LIVE_DATA_THRESHOLD_MS;
   const degraded = snapshot.heartbeat?.status === "degraded";
   const healthy = freshEngine && !degraded;
+  const liveData = isExecutionLive();
 
   if (!healthy) {
     badge.className = `live-badge ${freshEngine ? "degraded" : "offline"}`;
@@ -105,15 +105,17 @@ function renderHeartbeat() {
     return;
   }
 
+  const ages = sourceAgesSeconds();
+  const detail = `Nosana ${ageLabel(ages.nosana)} · Clore ${ageLabel(ages.clore)} · Solana ${ageLabel(ages.solana)}`;
+  document.getElementById("pollDetail").textContent = detail;
+
   if (liveData) {
     badge.className = "live-badge live";
     document.getElementById("liveLabel").textContent = "LIVE";
-    document.getElementById("pollDetail").textContent = "market feed active";
   } else {
-    const seconds = Math.max(1, Math.ceil(marketAge / 1000));
+    const worst = Math.max(ages.nosana, ages.clore, ages.solana);
     badge.className = "live-badge degraded";
-    document.getElementById("liveLabel").textContent = `DELAYED ${seconds}s`;
-    document.getElementById("pollDetail").textContent = `market inputs ${seconds}s behind`;
+    document.getElementById("liveLabel").textContent = `DELAYED ${Math.max(1, Math.ceil(worst))}s`;
   }
   document.getElementById("vmStatusDot").classList.toggle("live", liveData);
 }
@@ -136,7 +138,35 @@ function isHeartbeatFresh() {
 }
 
 function isExecutionLive() {
-  return isHeartbeatFresh() && marketDataAgeMs() <= LIVE_DATA_THRESHOLD_MS;
+  return isHeartbeatFresh() && isSourceFresh("nosana") && isSourceFresh("clore") && isSourceFresh("solana");
+}
+
+function isSourceFresh(source) {
+  const freshness = snapshot?.freshness || {};
+  const observedKey = `${source}ObservedAt`;
+  const maxAgeKey = `${source}MaxAgeSeconds`;
+  const observedAt = freshness[observedKey] || snapshot?.observedAt;
+  const maxAgeSeconds = Number(freshness[maxAgeKey] || 15);
+  if (!observedAt) return false;
+  return Date.now() - new Date(observedAt).getTime() <= maxAgeSeconds * 1000;
+}
+
+function sourceAgesSeconds() {
+  return {
+    nosana: sourceAgeSeconds("nosana"),
+    clore: sourceAgeSeconds("clore"),
+    solana: sourceAgeSeconds("solana"),
+  };
+}
+
+function sourceAgeSeconds(source) {
+  const observedAt = snapshot?.freshness?.[`${source}ObservedAt`] || snapshot?.observedAt;
+  if (!observedAt) return Infinity;
+  return Math.max(0, (Date.now() - new Date(observedAt).getTime()) / 1000);
+}
+
+function ageLabel(seconds) {
+  return Number.isFinite(seconds) ? `${Math.max(0, Math.floor(seconds))}s` : "unknown";
 }
 
 function marketDataAgeMs() {
