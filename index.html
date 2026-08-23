@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paper Market Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Generic paper-trading simulator</p>
+          <h1>Paper Market Lab</h1>
+          <p class="subhead">Replay a fake market, override ON/OFF decisions, and compare counterfactual P&amp;L without future leakage.</p>
+        </div>
+        <div class="status-pill"><span></span><span id="serviceStatus">connecting</span></div>
+      </header>
+
+      <section class="cards summary-grid" aria-label="Simulation summary">
+        <article class="card"><span class="label">Virtual time</span><strong id="virtualTime">—</strong><small id="positionText">—</small></article>
+        <article class="card"><span class="label">Fake cash</span><strong id="cash">—</strong><small id="pnl">—</small></article>
+        <article class="card"><span class="label">Supply</span><strong id="supplyState">—</strong><small id="lockState">—</small></article>
+        <article class="card"><span class="label">Model recommendation</span><strong id="recommendation">—</strong><small id="expectedProfit">—</small></article>
+      </section>
+
+      <section class="panel timeline-panel">
+        <div class="section-heading">
+          <div><p class="eyebrow">Time machine</p><h2>Replay clock</h2></div>
+          <div class="button-row">
+            <button type="button" data-jump="-4">−1h</button>
+            <button type="button" data-jump="-1">−15m</button>
+            <button type="button" data-jump="1">+15m</button>
+            <button type="button" data-jump="4">+1h</button>
+            <button type="button" id="jumpEnd">Latest</button>
+          </div>
+        </div>
+        <input id="timeSlider" class="timeline" type="range" min="0" max="1" step="1" value="0" aria-label="Virtual time" />
+        <div class="timeline-labels"><span id="startTime">—</span><span>Future observations remain hidden until you advance</span><span id="endTime">—</span></div>
+      </section>
+
+      <section class="two-col">
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">At this timestamp</p><h2>Market state</h2></div><span id="marketSignal" class="signal">—</span></div>
+          <dl class="metrics">
+            <div><dt>Buyer jobs queued</dt><dd id="jobQueue">—</dd></div>
+            <div><dt>Hosts waiting</dt><dd id="hostQueue">—</dd></div>
+            <div><dt>Job starts / hour</dt><dd id="jobsPerHour">—</dd></div>
+            <div><dt>Buyer payout</dt><dd id="reward">—</dd></div>
+            <div><dt>Supply cost</dt><dd id="cost">—</dd></div>
+            <div><dt>Observed market fill</dt><dd id="marketFill">—</dd></div>
+            <div><dt>Predicted utilization</dt><dd id="predictedUtil">—</dd></div>
+            <div><dt>Realized utilization</dt><dd id="realizedUtil">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Counterfactual control</p><h2>Decision from here</h2></div></div>
+          <p class="muted">A directive persists forward in simulated time until another directive replaces it.</p>
+          <div class="decision-grid">
+            <button type="button" class="decision off" data-mode="off">Force OFF</button>
+            <button type="button" class="decision auto" data-mode="auto">AUTO model</button>
+            <button type="button" class="decision on" data-mode="on">Force ON</button>
+          </div>
+          <div id="directiveMessage" class="callout" aria-live="polite">No manual directive at this timestamp.</div>
+          <button type="button" id="clearDirectives" class="text-button">Clear all manual decisions</button>
+        </section>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">What the model knew</p><h2>Equity and expected edge</h2></div><span class="legend"><i class="equity-dot"></i>Fake P&amp;L <i class="edge-dot"></i>Expected next-window profit</span></div>
+        <svg id="chart" viewBox="0 0 1000 300" role="img" aria-label="Paper trading equity and expected profit over visible simulated time"></svg>
+      </section>
+
+      <section class="two-col bottom-grid">
+        <section class="panel settings-panel">
+          <div class="section-heading"><div><p class="eyebrow">Simple model only</p><h2>Assumptions</h2></div></div>
+          <form id="settingsForm" class="settings-grid">
+            <label>Start cash USD<input name="startCashUsd" type="number" min="0" step="1" value="100" /></label>
+            <label>Commitment hours<input name="commitmentHours" type="number" min="0.25" max="72" step="0.25" value="6" /></label>
+            <label>Activation delay min<input name="activationDelayMinutes" type="number" min="0" max="360" step="5" value="30" /></label>
+            <label>Activation fee USD<input name="activationFeeUsd" type="number" min="0" step="0.01" value="0.10" /></label>
+            <label>Forecast lookback h<input name="forecastLookbackHours" type="number" min="0.25" max="72" step="0.25" value="6" /></label>
+            <label>Min expected profit USD<input name="minimumExpectedProfitUsd" type="number" step="0.01" value="0.05" /></label>
+            <label>Scenario seed<input name="seed" type="number" min="1" step="1" value="421337" /></label>
+            <button type="submit" class="primary">Regenerate and replay</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Audit trail</p><h2>Recent decisions</h2></div></div>
+          <ol id="eventLog" class="event-log"></ol>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
