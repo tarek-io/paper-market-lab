@@ -1,8 +1,9 @@
-import { allocateLiveCapital } from "./live-model.mjs?v=live-1";
+import { allocateLiveCapital } from "./live-model.mjs?v=live-2";
 
-const LIVE_URL = "https://api.github.com/repos/tarek-io/paper-market-lab/contents/live.json?ref=live";
-const PUBLIC_POLL_MS = 75_000;
-const STALE_AFTER_MS = 210_000;
+const LIVE_URL = "https://tarek-codex-cloud.duckdns.org/paper-live/api/live";
+const PUBLIC_POLL_MS = 1_000;
+const LIVE_DATA_THRESHOLD_MS = 2_500;
+const ENGINE_STALE_THRESHOLD_MS = 90_000;
 
 let snapshot = null;
 let capital = 100;
@@ -19,16 +20,9 @@ setInterval(renderHeartbeat, 1_000);
 
 async function refresh() {
   try {
-    const response = await fetch(LIVE_URL, {
-      cache: "no-store",
-      headers: { accept: "application/vnd.github+json" },
-    });
+    const response = await fetch(`${LIVE_URL}?t=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`heartbeat ${response.status}`);
-    const envelope = await response.json();
-    const encoded = String(envelope.content || "").replace(/\s/g, "");
-    const binary = atob(encoded);
-    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-    snapshot = JSON.parse(new TextDecoder().decode(bytes));
+    snapshot = await response.json();
     renderSnapshot();
   } catch {
     renderOffline();
@@ -37,7 +31,7 @@ async function refresh() {
 
 function renderSnapshot() {
   const primary = snapshot?.primary;
-  const live = isHeartbeatFresh();
+  const live = isExecutionLive();
 
   document.getElementById("inventoryBadge").textContent = `${snapshot?.market?.qualifyingUnits || 0} AVAILABLE`;
   document.getElementById("gpuName").textContent = primary?.gpu?.replace("NVIDIA ", "") || "NO MATCH";
@@ -96,17 +90,32 @@ function renderAllocation() {
 function renderHeartbeat() {
   if (!snapshot) return;
   const badge = document.getElementById("liveBadge");
-  const age = heartbeatAgeMs();
-  const fresh = age < STALE_AFTER_MS;
+  const engineAge = engineHeartbeatAgeMs();
+  const marketAge = marketDataAgeMs();
+  const freshEngine = engineAge < ENGINE_STALE_THRESHOLD_MS;
+  const liveData = marketAge <= LIVE_DATA_THRESHOLD_MS;
   const degraded = snapshot.heartbeat?.status === "degraded";
-  badge.className = `live-badge ${fresh ? degraded ? "degraded" : "live" : "offline"}`;
-  document.getElementById("liveLabel").textContent = fresh ? degraded ? "DEGRADED" : "LIVE" : "OFFLINE";
-  document.getElementById("pollDetail").textContent = fresh
-    ? degraded
-      ? "market feed degraded"
-      : "market feed active"
-    : "market feed offline";
-  document.getElementById("vmStatusDot").classList.toggle("live", fresh && !degraded);
+  const healthy = freshEngine && !degraded;
+
+  if (!healthy) {
+    badge.className = `live-badge ${freshEngine ? "degraded" : "offline"}`;
+    document.getElementById("liveLabel").textContent = freshEngine ? "DEGRADED" : "OFFLINE";
+    document.getElementById("pollDetail").textContent = freshEngine ? "market feed degraded" : "market feed offline";
+    document.getElementById("vmStatusDot").classList.remove("live");
+    return;
+  }
+
+  if (liveData) {
+    badge.className = "live-badge live";
+    document.getElementById("liveLabel").textContent = "LIVE";
+    document.getElementById("pollDetail").textContent = "market feed active";
+  } else {
+    const seconds = Math.max(1, Math.ceil(marketAge / 1000));
+    badge.className = "live-badge degraded";
+    document.getElementById("liveLabel").textContent = `DELAYED ${seconds}s`;
+    document.getElementById("pollDetail").textContent = `market inputs ${seconds}s behind`;
+  }
+  document.getElementById("vmStatusDot").classList.toggle("live", liveData);
 }
 
 function renderOffline() {
@@ -116,14 +125,24 @@ function renderOffline() {
   document.getElementById("pollDetail").textContent = "cannot reach public VM heartbeat";
 }
 
-function heartbeatAgeMs() {
+function engineHeartbeatAgeMs() {
   const time = snapshot?.heartbeat?.cycleCompletedAt || snapshot?.generatedAt;
   if (!time) return Infinity;
   return Math.max(0, Date.now() - new Date(time).getTime());
 }
 
 function isHeartbeatFresh() {
-  return heartbeatAgeMs() < STALE_AFTER_MS && snapshot?.heartbeat?.status === "live";
+  return engineHeartbeatAgeMs() < ENGINE_STALE_THRESHOLD_MS && snapshot?.heartbeat?.status === "live";
+}
+
+function isExecutionLive() {
+  return isHeartbeatFresh() && marketDataAgeMs() <= LIVE_DATA_THRESHOLD_MS;
+}
+
+function marketDataAgeMs() {
+  const time = snapshot?.observedAt;
+  if (!time) return Infinity;
+  return Math.max(0, Date.now() - new Date(time).getTime());
 }
 
 function money(value) { return `$${Number(value || 0).toFixed(2)}`; }
