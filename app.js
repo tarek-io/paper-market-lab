@@ -1,4 +1,4 @@
-import { allocateLiveCapital, maximumUsefulCapital } from "./live-model.mjs?v=live-5";
+import { allocateLiveCapital, maximumUsefulCapital } from "./live-model.mjs?v=live-6";
 
 const LIVE_URL = "https://tarek-codex-cloud.duckdns.org/paper-live/api/live";
 const PUBLIC_POLL_MS = 1_000;
@@ -41,7 +41,7 @@ function renderSnapshot() {
   const primary = snapshot?.primary;
   const live = isExecutionLive();
 
-  document.getElementById("inventoryBadge").textContent = `${snapshot?.market?.qualifyingUnits || 0} AVAILABLE`;
+  document.getElementById("inventoryBadge").textContent = `${snapshot?.market?.qualifyingUnits || 0} CAPTURABLE`;
   document.getElementById("gpuName").textContent = primary?.gpu?.replace("NVIDIA ", "") || "NO MATCH";
   document.getElementById("serverName").textContent = primary ? `server ${primary.supplierServerId} · ${primary.supplierMode}` : "waiting";
   document.getElementById("supplierPrice").textContent = primary ? `${money(primary.supplyCostUsdPerHour)}/h cost` : "—";
@@ -61,7 +61,7 @@ function renderSnapshot() {
 
   const util = Number(primary?.expectedUtilization || 0);
   document.getElementById("utilValue").textContent = primary ? `${Math.round(util * 100)}%` : "—";
-  document.getElementById("utilSub").textContent = primary ? `break-even ${Math.round(primary.breakEvenUtilization * 100)}%` : "market fill";
+  document.getElementById("utilSub").textContent = primary ? "queued buyer job available" : "queued buyer demand";
   document.getElementById("utilMeter").style.width = `${Math.round(util * 100)}%`;
 
   const edge = Number(primary?.netRateUsdPerHour || 0);
@@ -69,7 +69,9 @@ function renderSnapshot() {
   edgeEl.textContent = primary ? `${signedMoney(edge)}/h` : "—";
   edgeEl.className = edge > 0 ? "positive-text" : edge < 0 ? "negative-text" : "";
   document.getElementById("edgeSub").textContent = primary
-    ? `break-even ${formatDuration(primary.breakEvenHours)}`
+    ? primary.breakEvenHours != null
+      ? `total payback ${formatDuration(primary.breakEvenHours)}`
+      : `fixed payback ${formatDuration(primary.knownFixedPaybackHours)} · activation TBD`
     : "current modeled edge";
   document.getElementById("edgeMeter").style.width = primary
     ? `${Math.max(0, Math.min(100, Number(primary.capitalEfficiencyPerHour || 0) * 100))}%`
@@ -94,12 +96,16 @@ function renderAllocation() {
     ? `${signedMoney(allocation.expectedNetRateUsdPerHour)}/h`
     : "$0.00/h";
   document.getElementById("breakEvenBadge").textContent = allocation.units
-    ? formatDuration(allocation.breakEvenHours)
+    ? allocation.breakEvenHours != null
+      ? formatDuration(allocation.breakEvenHours)
+      : formatDuration(allocation.knownFixedPaybackHours)
     : "—";
   document.getElementById("breakEvenBadge").className = `profit-badge ${allocation.units ? "positive" : "neutral"}`;
   document.getElementById("capitalHint").textContent = snapshot.inventory?.length
-    ? `MAX ${money(maxCapital)} · ${snapshot.inventory.length} qualifying units · 1h supplier costs + order fees`
-    : "No currently qualifying units";
+    ? `MAX ${money(maxCapital)} · ${snapshot.market?.capturableQueuedJobs || snapshot.inventory.length}/${snapshot.market?.totalQueuedJobs || 0} queued jobs capturable · 1h supplier costs + fees`
+    : snapshot.market?.totalQueuedJobs
+      ? `${snapshot.market.totalQueuedJobs} queued jobs · no current positive-margin on-demand match`
+      : "No currently queued buyer jobs";
   maxCapitalToggle.disabled = !snapshot.inventory?.length;
   input.readOnly = maxCapitalToggle.checked;
   document.getElementById("unitCount").textContent = String(allocation.units);
@@ -188,7 +194,9 @@ function syncCapitalToMaximum() {
 function formatDuration(hours) {
   const value = Number(hours);
   if (!Number.isFinite(value) || value < 0) return "unknown";
-  if (value < 1) return `${Math.max(1, Math.round(value * 60))}m`;
+  if (value === 0) return "0m";
+  if (value < 1 / 60) return "<1m";
+  if (value < 1) return `${Math.round(value * 60)}m`;
   return `${value.toFixed(value < 10 ? 1 : 0)}h`;
 }
 

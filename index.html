@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Paper Capital Live</title>
-    <link rel="stylesheet" href="./styles.css?v=live-4" />
+    <link rel="stylesheet" href="./styles.css?v=live-5" />
   </head>
   <body>
     <main class="app-shell">
@@ -43,7 +43,7 @@
               <strong id="netRate">—</strong>
             </div>
             <div class="profit-result">
-              <span>BREAK-EVEN IF RATE HOLDS</span>
+              <span>KNOWN FIXED PAYBACK</span>
               <div id="breakEvenBadge" class="profit-badge neutral">—</div>
             </div>
           </div>
@@ -107,9 +107,9 @@
           <div class="meter"><span id="demandMeter"></span></div>
         </article>
         <article class="metric-card glass-card">
-          <div class="metric-top"><span>Expected use</span><span class="metric-icon">◐</span></div>
+          <div class="metric-top"><span>Immediate fill</span><span class="metric-icon">◐</span></div>
           <strong id="utilValue">—</strong>
-          <small id="utilSub">market fill</small>
+          <small id="utilSub">queued buyer demand</small>
           <div class="meter"><span id="utilMeter"></span></div>
         </article>
         <article class="metric-card glass-card">
@@ -136,10 +136,10 @@
       </section>
 
       <footer>
-        <span>Fake money · demand can change before break-even</span>
+        <span>Fake money · activation timing unmeasured</span>
         <span id="lastSnapshot">No live snapshot yet</span>
       </footer>
     </main>
-    <script type="module" src="./app.js?v=live-5"></script>
+    <script type="module" src="./app.js?v=live-6"></script>
   </body>
 </html>
