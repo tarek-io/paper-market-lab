@@ -3,45 +3,40 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Paper Market</title>
-    <link rel="stylesheet" href="./styles.css?v=minimal-1" />
+    <title>Paper Capital</title>
+    <link rel="stylesheet" href="./styles.css?v=capital-1" />
   </head>
   <body>
     <main class="viewer">
       <header>
-        <span>AI paper model</span>
-        <h1>Paper Market</h1>
+        <span>Deterministic paper model</span>
+        <h1>Paper Capital</h1>
       </header>
 
-      <section class="hero">
-        <p class="kicker">MODEL</p>
-        <div id="modelDecision" class="decision">—</div>
-        <p id="decisionReason" class="reason">—</p>
-      </section>
-
-      <section class="pnl">
-        <span>Fake P&amp;L</span>
-        <strong id="pnlValue">—</strong>
-      </section>
-
-      <section class="timeline-wrap">
-        <input id="timeSlider" type="range" min="0" max="1" step="1" value="0" aria-label="Simulation time" />
-        <div class="time-row">
-          <span id="virtualTime">—</span>
-          <span id="timePosition">—</span>
+      <form id="capitalForm" class="capital-form">
+        <label for="capitalInput">Fake money to put in now</label>
+        <div class="money-input">
+          <span>$</span>
+          <input id="capitalInput" name="capital" type="number" min="0" step="1" inputmode="decimal" value="100" />
         </div>
+      </form>
+
+      <section class="result" aria-live="polite">
+        <p id="action" class="action">—</p>
+        <div class="arrow-row">
+          <strong id="startingCapital">—</strong>
+          <span>→</span>
+          <strong id="endingCapital">—</strong>
+        </div>
+        <p id="profit" class="profit">—</p>
       </section>
 
-      <section class="stats" aria-label="Model inputs">
-        <div><span>Demand</span><strong id="demand">—</strong></div>
-        <div><span>Expected edge</span><strong id="edge">—</strong></div>
-        <div><span>Forecast use</span><strong id="utilization">—</strong></div>
+      <section class="explain">
+        <p id="explanation">—</p>
       </section>
 
-      <svg id="chart" viewBox="0 0 900 150" role="img" aria-label="Paper profit history"></svg>
-
-      <footer>Fake money · synthetic market · model controls itself</footer>
+      <footer>Fake money · synthetic market · deterministic algorithm</footer>
     </main>
-    <script type="module" src="./app.js?v=minimal-1"></script>
+    <script type="module" src="./app.js?v=capital-1"></script>
   </body>
 </html>

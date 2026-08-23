@@ -100,9 +100,14 @@ export function simulate({ scenario, config: inputConfig, directives = [] }) {
     }
 
     const market = timeline[index];
-    const forecast = forecastAt(timeline, index, config);
-    const activationCost = supplyOn ? 0 : config.activationFeeUsd;
-    const expectedWindowProfit = forecast.rewardUsdPerPaidHour * forecast.predictedUtilization * config.commitmentHours - market.supplyCostUsdPerHour * config.commitmentHours - activationCost;
+    const evaluation = evaluateOpportunity({
+      timeline,
+      index,
+      config,
+      includeActivationFee: !supplyOn,
+    });
+    const forecast = evaluation.forecast;
+    const expectedWindowProfit = evaluation.expectedProfitPerUnitUsd;
     const autoWantsOn = expectedWindowProfit > config.minimumExpectedProfitUsd;
     const desiredOn = currentMode === "on" ? true : currentMode === "off" ? false : autoWantsOn;
 
@@ -151,6 +156,88 @@ export function simulate({ scenario, config: inputConfig, directives = [] }) {
   }
 
   return { config, results, events, directives: sortedDirectives };
+}
+
+export function evaluateOpportunity({
+  timeline,
+  index,
+  config: inputConfig = {},
+  includeActivationFee = true,
+}) {
+  const config = normalizeConfig(inputConfig);
+  const market = timeline[index];
+  const forecast = forecastAt(timeline, index, config);
+  const delayHours = config.activationDelayMinutes / 60;
+  const earningHours = Math.max(0, config.commitmentHours - delayHours);
+  const expectedRevenuePerUnitUsd = forecast.rewardUsdPerPaidHour * forecast.predictedUtilization * earningHours;
+  const rentalCostPerUnitUsd = market.supplyCostUsdPerHour * config.commitmentHours;
+  const activationFeeUsd = includeActivationFee ? config.activationFeeUsd : 0;
+  const commitmentCostPerUnitUsd = rentalCostPerUnitUsd + activationFeeUsd;
+  const expectedProfitPerUnitUsd = expectedRevenuePerUnitUsd - commitmentCostPerUnitUsd;
+
+  return {
+    forecast,
+    earningHours,
+    expectedRevenuePerUnitUsd: round(expectedRevenuePerUnitUsd, 6),
+    rentalCostPerUnitUsd: round(rentalCostPerUnitUsd, 6),
+    activationFeeUsd: round(activationFeeUsd, 6),
+    commitmentCostPerUnitUsd: round(commitmentCostPerUnitUsd, 6),
+    expectedProfitPerUnitUsd: round(expectedProfitPerUnitUsd, 6),
+    shouldActivate: expectedProfitPerUnitUsd > config.minimumExpectedProfitUsd,
+  };
+}
+
+export function allocateCapital({
+  timeline,
+  index,
+  capitalUsd,
+  config: inputConfig = {},
+}) {
+  const config = normalizeConfig(inputConfig);
+  const capital = number(capitalUsd, 0, 0, 1_000_000_000);
+  const evaluation = evaluateOpportunity({ timeline, index, config, includeActivationFee: true });
+
+  if (!evaluation.shouldActivate || evaluation.commitmentCostPerUnitUsd <= 0) {
+    return {
+      action: "WAIT",
+      units: 0,
+      startingCapitalUsd: round(capital, 2),
+      deployedCapitalUsd: 0,
+      reserveCapitalUsd: round(capital, 2),
+      expectedProfitUsd: 0,
+      expectedEndingCapitalUsd: round(capital, 2),
+      ...evaluation,
+    };
+  }
+
+  const units = Math.floor(capital / evaluation.commitmentCostPerUnitUsd);
+  if (units < 1) {
+    return {
+      action: "WAIT",
+      units: 0,
+      startingCapitalUsd: round(capital, 2),
+      deployedCapitalUsd: 0,
+      reserveCapitalUsd: round(capital, 2),
+      expectedProfitUsd: 0,
+      expectedEndingCapitalUsd: round(capital, 2),
+      ...evaluation,
+    };
+  }
+
+  const deployedCapitalUsd = units * evaluation.commitmentCostPerUnitUsd;
+  const reserveCapitalUsd = capital - deployedCapitalUsd;
+  const expectedProfitUsd = units * evaluation.expectedProfitPerUnitUsd;
+
+  return {
+    action: "DEPLOY",
+    units,
+    startingCapitalUsd: round(capital, 2),
+    deployedCapitalUsd: round(deployedCapitalUsd, 2),
+    reserveCapitalUsd: round(reserveCapitalUsd, 2),
+    expectedProfitUsd: round(expectedProfitUsd, 2),
+    expectedEndingCapitalUsd: round(capital + expectedProfitUsd, 2),
+    ...evaluation,
+  };
 }
 
 export function forecastAt(timeline, index, configInput = {}) {

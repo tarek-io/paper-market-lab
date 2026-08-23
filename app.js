@@ -1,4 +1,4 @@
-import { generateScenario, simulate } from "./model.mjs?v=minimal-1";
+import { allocateCapital, generateScenario } from "./model.mjs?v=capital-1";
 
 const config = {
   seed: 421337,
@@ -13,88 +13,39 @@ const config = {
 };
 
 const scenario = generateScenario(config);
-const simulation = simulate({ scenario, config, directives: [] });
-let cursor = scenario.timeline.length - 1;
+const index = scenario.timeline.length - 1;
+const input = document.getElementById("capitalInput");
 
-const $ = (id) => document.getElementById(id);
-const slider = $("timeSlider");
-slider.max = String(scenario.timeline.length - 1);
-slider.value = String(cursor);
-
-slider.addEventListener("input", () => {
-  cursor = Number(slider.value);
-  render();
-});
+input.addEventListener("input", render);
+document.getElementById("capitalForm").addEventListener("submit", (event) => event.preventDefault());
 
 render();
 
 function render() {
-  const market = scenario.timeline[cursor];
-  const model = simulation.results[cursor];
+  const capital = Math.max(0, Number(input.value || 0));
+  const result = allocateCapital({ timeline: scenario.timeline, index, capitalUsd: capital, config });
 
-  const decision = $("modelDecision");
-  decision.textContent = model.supplyOn ? "ON" : "OFF";
-  decision.className = `decision ${model.supplyOn ? "on" : "off"}`;
+  const action = document.getElementById("action");
+  action.textContent = result.action === "DEPLOY" ? `DEPLOY ${result.units} UNIT${result.units === 1 ? "" : "S"}` : "WAIT";
+  action.className = `action ${result.action === "DEPLOY" ? "deploy" : "wait"}`;
 
-  $("decisionReason").textContent = reasonFor(market, model);
+  document.getElementById("startingCapital").textContent = money(result.startingCapitalUsd);
+  document.getElementById("endingCapital").textContent = money(result.expectedEndingCapitalUsd);
 
-  const pnl = $("pnlValue");
-  pnl.textContent = signedUsd(model.pnlUsd);
-  pnl.className = model.pnlUsd > 0 ? "positive" : model.pnlUsd < 0 ? "negative" : "";
+  const profit = document.getElementById("profit");
+  profit.textContent = result.expectedProfitUsd > 0
+    ? `Expected profit +${money(result.expectedProfitUsd)} over ${config.commitmentHours} hours`
+    : `Expected profit ${money(result.expectedProfitUsd)} over ${config.commitmentHours} hours`;
+  profit.className = `profit ${result.expectedProfitUsd > 0 ? "positive" : result.expectedProfitUsd < 0 ? "negative" : ""}`;
 
-  $("virtualTime").textContent = formatTime(market.timestamp);
-  $("timePosition").textContent = `${cursor + 1} / ${scenario.timeline.length}`;
-  $("demand").textContent = demandText(market);
-
-  const edge = $("edge");
-  edge.textContent = signedUsd(model.expectedWindowProfitUsd);
-  edge.className = model.expectedWindowProfitUsd > 0 ? "positive" : model.expectedWindowProfitUsd < 0 ? "negative" : "";
-
-  $("utilization").textContent = `${(model.predictedUtilization * 100).toFixed(0)}%`;
-  drawChart();
+  document.getElementById("explanation").textContent = explanation(result);
 }
 
-function reasonFor(market, model) {
-  if (model.supplyOn && model.locked) return `Supply is committed through the current ${config.commitmentHours}-hour window.`;
-  if (model.supplyOn) return `Expected next-window profit is ${signedUsd(model.expectedWindowProfitUsd)}.`;
-  if (market.hostQueue > 0) return `${market.hostQueue} hosts are already waiting for work, so the model stays out.`;
-  if (market.jobQueue > 0) return `${market.jobQueue} buyer jobs are waiting, but expected profit still does not clear the model threshold.`;
-  return `Expected next-window profit is ${signedUsd(model.expectedWindowProfitUsd)}, below the activation threshold.`;
+function explanation(result) {
+  if (!result.shouldActivate) return `The deterministic rule says stay out. Expected profit per supply unit is ${signedMoney(result.expectedProfitPerUnitUsd)}, below the activation threshold.`;
+  if (result.units < 1) return `The opportunity passes the rule, but one supply unit requires ${money(result.commitmentCostPerUnitUsd)} of fake capital for the next ${config.commitmentHours}-hour commitment.`;
+  return `${money(result.deployedCapitalUsd)} is deployed across ${result.units} whole supply unit${result.units === 1 ? "" : "s"}. ${money(result.reserveCapitalUsd)} remains unused. Expected profit per deployed unit is ${signedMoney(result.expectedProfitPerUnitUsd)}.`;
 }
 
-function demandText(market) {
-  if (market.jobQueue > 0) return `${market.jobQueue} jobs waiting`;
-  if (market.hostQueue > 0) return `${market.hostQueue} hosts waiting`;
-  return "balanced";
-}
-
-function drawChart() {
-  const svg = $("chart");
-  const rows = simulation.results.slice(0, cursor + 1);
-  const values = rows.map((row) => row.pnlUsd);
-  const width = 900;
-  const height = 150;
-  const pad = 4;
-  let min = Math.min(0, ...values);
-  let max = Math.max(0, ...values);
-  if (max - min < 0.01) { min -= 1; max += 1; }
-  const x = (index) => pad + (index / Math.max(1, values.length - 1)) * (width - pad * 2);
-  const y = (value) => height - pad - ((value - min) / (max - min)) * (height - pad * 2);
-  const path = values.map((value, index) => `${index ? "L" : "M"}${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(" ");
-  const stroke = values.at(-1) >= 0 ? "#16a36a" : "#d94d4d";
-  svg.innerHTML = `<path d="${path}" fill="none" stroke="${stroke}" stroke-width="3" vector-effect="non-scaling-stroke" />`;
-}
-
-function signedUsd(value) {
-  const number = Number(value);
-  return `${number >= 0 ? "+" : "−"}$${Math.abs(number).toFixed(2)}`;
-}
-
-function formatTime(value) {
-  return new Date(value).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+function money(value) { return `$${Number(value).toFixed(2)}`; }
+function signedMoney(value) { const number = Number(value); return `${number >= 0 ? "+" : "−"}$${Math.abs(number).toFixed(2)}`; }
