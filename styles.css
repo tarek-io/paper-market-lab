@@ -27,6 +27,9 @@ body {
 
 .app-shell { width: min(1040px, calc(100% - 30px)); margin: 0 auto; padding: 32px 0 34px; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 18px; }
+.outdated-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 11px 13px; border: 1px solid rgba(255, 199, 101, .45); border-radius: 12px; color: var(--amber); background: rgba(255, 199, 101, .08); font-size: 11px; }
+.outdated-banner strong { letter-spacing: .06em; }
+.outdated-banner span { color: #d8c49a; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand-mark { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: linear-gradient(145deg, #1b2635, #111823); border: 1px solid #2a3748; font-weight: 800; }
 h1 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
@@ -128,4 +131,5 @@ footer { display: flex; justify-content: space-between; gap: 14px; margin-top: 1
   .buyer-node { order: 3; justify-content: flex-start; }
   .polling-card { align-items: flex-start; flex-direction: column; }
   .source-statuses { width: 100%; justify-content: space-between; }
+  .outdated-banner { align-items: flex-start; flex-direction: column; }
 }
