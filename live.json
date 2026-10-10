@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": "2026-10-10T18:30:07.389Z",
+  "observedAt": "2026-10-10T18:29:58.113Z",
+  "config": {
+    "workingCapitalHours": 1,
+    "activationDelayMinutes": null,
+    "activationTimingStatus": "unmeasured",
+    "minimumReliability": 0.9,
+    "minimumNetRateUsdPerHour": 0,
+    "supplierMode": "on-demand",
+    "requireQueuedDemand": true
+  },
+  "engine": {
+    "type": "deterministic",
+    "version": "live-v3",
+    "rule": "rank reliable on-demand units by current net rate and cap each market to visible queued jobs"
+  },
+  "sources": {
+    "buyer": {
+      "name": "Nosana",
+      "role": "buyer / revenue",
+      "endpoint": "https://dashboard.k8s.prd.nos.ci/api/markets",
+      "jobsEndpoint": "https://dashboard.k8s.prd.nos.ci/api/jobs",
+      "status": "ok"
+    },
+    "supplier": {
+      "name": "Clore",
+      "role": "supplier / cost",
+      "endpoint": "https://api.clore.ai/v1/marketplace",
+      "status": "ok"
+    },
+    "queueVerifier": {
+      "name": "Solana",
+      "role": "Nosana queue verification",
+      "endpoint": "https://api.mainnet-beta.solana.com",
+      "status": "ok"
+    }
+  },
+  "market": {
+    "qualifyingUnits": 0,
+    "capturableQueuedJobs": 0,
+    "totalQueuedJobs": 0,
+    "queuedCaptureFraction": 0,
+    "totalQueuedGrossRateUsdPerHour": 0,
+    "capturableGrossRateUsdPerHour": 0,
+    "capturableSupplyCostUsdPerHour": 0,
+    "capturableNetRateUsdPerHour": 0,
+    "cloreAvailableServers": 1369,
+    "cloreEligibleOffers": 202,
+    "nosanaMarketCount": 18
+  },
+  "primary": null,
+  "inventory": [],
+  "freshness": {
+    "nosanaObservedAt": "2026-10-10T18:30:07.388Z",
+    "solanaObservedAt": "2026-10-10T18:30:07.388Z",
+    "cloreObservedAt": "2026-10-10T18:29:58.113Z",
+    "discoveryObservedAt": "2026-10-10T18:29:07.475Z",
+    "nosanaMaxAgeSeconds": 15,
+    "solanaMaxAgeSeconds": 15,
+    "cloreMaxAgeSeconds": 15
+  },
+  "heartbeat": {
+    "status": "live",
+    "sequence": 31898,
+    "vm": "remyvm",
+    "pollIntervalSeconds": 2,
+    "clorePollIntervalSeconds": 10,
+    "discoveryIntervalSeconds": 60,
+    "cycleStartedAt": "2026-10-10T18:30:07.267Z",
+    "cycleCompletedAt": "2026-10-10T18:30:07.389Z",
+    "lastSuccessAt": "2026-10-10T18:30:07.389Z",
+    "discoveryError": null,
+    "historyError": null,
+    "error": null
+  }
+}
